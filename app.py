@@ -51,6 +51,32 @@ def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10)
     
     return y_pos
 
+# Function for text wrapping with character limit
+def wrap_text_with_limit(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
+    c.setFont(font_name, font_size)
+    words = text.split()
+    line = ""
+    max_chars = 25  # Character limit per line
+    
+    for word in words:
+        test_line = f"{line} {word}".strip()
+        if len(test_line) > max_chars:
+            if line:
+                c.drawString(x_pos, y_pos, line[:max_chars])
+                y_pos -= font_size + 4
+            line = word
+        else:
+            line = test_line
+    
+    if line:
+        if len(line) > max_chars:
+            c.drawString(x_pos, y_pos, line[:max_chars])
+        else:
+            c.drawString(x_pos, y_pos, line)
+        y_pos -= font_size + 4
+    
+    return y_pos
+
 template = """
 <!DOCTYPE html>
 <html lang="en">
