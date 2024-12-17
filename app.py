@@ -469,12 +469,38 @@ def create_pdf(data, photo=None):
     
     # Name and title
     c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 24)
-    y_position = wrap_text(data['name'], right_width, c, right_margin, y_position, "Helvetica-Bold", 24)
-    y_position -= 10
-    c.setFont("Helvetica", 16)
-    y_position = wrap_text(data['title'], right_width, c, right_margin, y_position, "Helvetica", 16)
+    
+    # Calculate center position for name and title
+    name_font_size = 24
+    title_font_size = 16
+    c.setFont("Helvetica-Bold", name_font_size)
+    
+    # Calculate text widths for centering
+    name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
+    title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
+    
+    # Calculate x positions for centering
+    available_width = width - right_margin - 60
+    name_x = right_margin + (available_width - name_width) / 2
+    
+    # Draw name
+    c.drawString(name_x, y_position, data['name'])
+    
+    # Draw underline
+    line_y = y_position - 5
+    line_width = name_width + 40  # Extend line beyond name
+    line_x_start = name_x - 20  # Start line before name
+    c.setLineWidth(1)
+    c.line(line_x_start, line_y, line_x_start + line_width, line_y)
+    
+    # Draw title
     y_position -= 30
+    c.setFont("Helvetica", title_font_size)
+    title_x = right_margin + (available_width - title_width) / 2
+    c.setFillColorRGB(0.4, 0.4, 0.4)  # Gray color for title
+    c.drawString(title_x, y_position, data['title'])
+    
+    y_position -= 40  # Extra space after title
 
     # Education section
     c.setFont("Helvetica-Bold", 18)
