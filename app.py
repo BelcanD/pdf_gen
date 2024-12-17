@@ -6,15 +6,33 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import base64
 import os
+import tempfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_temp_photo(file):
+    if file and allowed_file(file.filename):
+        # Create a temporary file with the same extension
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        temp_file = tempfile.NamedTemporaryFile(suffix=f'.{ext}', delete=False)
+        file.save(temp_file.name)
+        return temp_file.name
+    return None
+
+def cleanup_temp_file(filepath):
+    try:
+        if filepath and os.path.exists(filepath):
+            os.unlink(filepath)
+    except Exception as e:
+        print(f"Error cleaning up temp file: {e}")
 
 template = """
 <!DOCTYPE html>
@@ -328,7 +346,7 @@ template = """
 </html>
 """
 
-def create_pdf(data, photo=None):
+def create_pdf(data, photo_path=None):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -338,20 +356,18 @@ def create_pdf(data, photo=None):
     c.rect(0, 0, width/3, height, fill=1)
     
     # Calculate photo dimensions and position
-    photo_size = int(width/3 - 40)  # Slightly smaller for better margins
+    photo_size = int(width/3 - 40)
     photo_x = 20
     photo_y = height - photo_size - 20
     
-    # Draw white circle background for photo
-    c.setFillColorRGB(1, 1, 1)  # White color
+    # Draw white circle background
+    c.setFillColorRGB(1, 1, 1)
     c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Handle photo if provided
-    if photo:
+    if photo_path and os.path.exists(photo_path):
         try:
-            print("Processing photo...")
-            photo.seek(0)
-            img = Image.open(photo)
+            img = Image.open(photo_path)
             
             # Convert to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
@@ -361,157 +377,36 @@ def create_pdf(data, photo=None):
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Make the image square first
+            # Make square
             size = min(img.size)
             left = (img.size[0] - size) // 2
             top = (img.size[1] - size) // 2
             img = img.crop((left, top, left + size, top + size))
             
-            # Create circular mask
+            # Create mask
             mask = Image.new('L', (size, size), 0)
             draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0, size, size), fill=255)
             
-            # Create output image with transparency
+            # Apply mask and resize
             output = Image.new('RGBA', (size, size), (255, 255, 255, 0))
             output.paste(img, (0, 0))
             output.putalpha(mask)
-            
-            # Resize to fit the designated space
             output = output.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
             
             # Save to temporary buffer
-            img_buffer = BytesIO()
-            output.save(img_buffer, format='PNG')
-            img_buffer.seek(0)
+            temp_buffer = BytesIO()
+            output.save(temp_buffer, format='PNG')
+            temp_buffer.seek(0)
             
-            # Draw the masked photo
-            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
-            print("Photo successfully added to PDF")
+            # Draw in PDF
+            c.drawImage(temp_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
             
         except Exception as e:
-            print(f"Error processing photo: {str(e)}")
-            # If photo processing fails, we still have the white circle background
+            print(f"Error processing photo: {e}")
     
-    # Start content below photo circle
-    y_position = height - photo_size - 60
-    
-    # Add content to sidebar (white text)
-    c.setFillColorRGB(1, 1, 1)  # White color
-    
-    # About me section
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(20, y_position, "About me")
-    y_position -= 25
-    
-    # Split about text into multiple lines
-    c.setFont("Helvetica", 10)
-    words = data['about'].split()
-    line = ""
-    for word in words:
-        if len(line + word) < 25:
-            line += word + " "
-        else:
-            c.drawString(20, y_position, line)
-            y_position -= 15
-            line = word + " "
-    if line:
-        c.drawString(20, y_position, line)
-    
-    # Contact section
-    y_position -= 40
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(20, y_position, "Contact")
-    y_position -= 25
-    
-    c.setFont("Helvetica", 10)
-    c.drawString(20, y_position, data['phone'])
-    y_position -= 15
-    c.drawString(20, y_position, data['email'])
-    y_position -= 15
-    c.drawString(20, y_position, data['address'])
-    
-    # Expertise section
-    y_position -= 40
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(20, y_position, "Expertise")
-    y_position -= 25
-    
-    # Draw skill bars
-    c.setFont("Helvetica", 10)
-    for name, level in zip(data['skill_names'], data['skill_levels']):
-        c.drawString(20, y_position, name)
-        # Draw skill bar background
-        c.setFillColorRGB(0.3, 0.3, 0.3)
-        c.rect(20, y_position - 10, 80, 5, fill=1)
-        # Draw skill level
-        c.setFillColorRGB(1, 1, 1)
-        level_width = (float(level) / 100) * 80
-        c.rect(20, y_position - 10, level_width, 5, fill=1)
-        y_position -= 25
-
-    # Main content area (right side)
-    right_margin = width/3 + 40
-    y_position = height - 100
-    
-    # Name and title
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 24)
-    c.drawString(right_margin, y_position, data['name'])
-    y_position -= 30
-    c.setFont("Helvetica", 16)
-    c.drawString(right_margin, y_position, data['title'])
-    y_position -= 50
-
-    # Education section
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, y_position, "Education")
-    y_position -= 30
-    
-    for i in range(len(data['edu_years'])):
-        # Timeline dot
-        c.circle(right_margin - 15, y_position + 5, 3, fill=1)
-        
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(right_margin, y_position, data['edu_years'][i])
-        c.setFont("Helvetica", 10)
-        c.drawString(right_margin, y_position-15, data['edu_school'][i])
-        c.drawString(right_margin, y_position-30, data['edu_location'][i])
-        y_position -= 50
-
-    # Experience section
-    y_position -= 20
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, y_position, "Experience")
-    y_position -= 30
-    
-    for i in range(len(data['exp_years'])):
-        # Timeline dot
-        c.circle(right_margin - 15, y_position + 5, 3, fill=1)
-        
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(right_margin, y_position, data['exp_years'][i])
-        c.setFont("Helvetica", 10)
-        c.drawString(right_margin, y_position-15, data['exp_position'][i])
-        
-        # Split description into multiple lines
-        words = data['exp_description'][i].split()
-        line = ""
-        desc_y = y_position-30
-        for word in words:
-            if len(line + word) < 50:
-                line += word + " "
-            else:
-                c.drawString(right_margin, desc_y, line)
-                desc_y -= 15
-                line = word + " "
-        if line:
-            c.drawString(right_margin, desc_y, line)
-        y_position = desc_y - 30
-
-    c.save()
-    buffer.seek(0)
-    return buffer
+    # Rest of the PDF content
+    // ... existing code ...
 
 @app.route('/')
 def home():
@@ -519,6 +414,7 @@ def home():
 
 @app.route('/generate', methods=['POST'])
 def generate_pdf():
+    temp_filepath = None
     try:
         data = {
             'name': request.form['name'],
@@ -536,33 +432,26 @@ def generate_pdf():
             'skill_names': request.form.getlist('skill_names[]'),
             'skill_levels': request.form.getlist('skill_levels[]')
         }
-        
-        # Debug print
-        print("Files in request:", request.files)
-        
-        photo = None
+
         if 'photo' in request.files:
             file = request.files['photo']
-            print("Filename:", file.filename)  # Debug print
             if file and file.filename != '':
-                try:
-                    # Read the image directly
-                    photo = BytesIO(file.read())
-                    print("Photo successfully read")  # Debug print
-                except Exception as e:
-                    print(f"Error reading photo: {str(e)}")
+                temp_filepath = save_temp_photo(file)
 
-        pdf = create_pdf(data, photo)
+        pdf = create_pdf(data, temp_filepath)
         
         return send_file(
             pdf,
-            download_name='document.pdf',
+            download_name='resume.pdf',
             as_attachment=True,
             mimetype='application/pdf'
         )
     except Exception as e:
-        print(f"Error generating PDF: {str(e)}")  # Debug print
-        return f"An error occurred while generating the PDF: {str(e)}", 500
+        print(f"Error generating PDF: {e}")
+        return f"An error occurred while generating the PDF: {e}", 500
+    finally:
+        if temp_filepath:
+            cleanup_temp_file(temp_filepath)
 
 if __name__ == '__main__':
     app.run(debug=True) 
