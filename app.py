@@ -455,16 +455,18 @@ def create_pdf(data, photo=None):
     # Start content below photo circle
     y_position = height - name_section_height - 60  # Adjusted to start at the top of the black rectangle
 
-    # Draw Name and Title at specified coordinates
-    name_x_position = 50  # Adjust this based on your red circle
+    # Draw Name and Title at the center of the black rectangle
+    center_x_position = sidebar_width + (right_width / 2)  # Center position in the black rectangle
+    name_x_position = center_x_position - (c.stringWidth(data['name']) / 2)  # Center the name
     title_y_position = height - 100  # Adjust this based on your red circle
+    title_x_position = center_x_position - (c.stringWidth(data['title']) / 2)  # Center the title
 
     c.setFont("Helvetica-Bold", 20)
     c.setFillColorRGB(1, 1, 1)  # White color for text
     c.drawString(name_x_position, title_y_position, data['name'])  # Draw name
     title_y_position -= 25  # Move down for title
     c.setFont("Helvetica", 16)
-    c.drawString(name_x_position, title_y_position, data['title'])  # Draw title
+    c.drawString(title_x_position, title_y_position, data['title'])  # Draw title
 
     # About me section
     c.setFont("Helvetica-Bold", 16)
