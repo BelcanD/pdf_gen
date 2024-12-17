@@ -6,6 +6,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import base64
 import os
+import tempfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -347,6 +348,7 @@ def create_pdf(data, photo=None):
         try:
             photo.seek(0)
             img = Image.open(photo)
+            print(f"Image opened successfully. Mode: {img.mode}, Size: {img.size}")
             
             # Convert to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
@@ -355,23 +357,30 @@ def create_pdf(data, photo=None):
                 img = background
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
+            print("Image converted to RGB")
             
             # Resize to fit the space
             img = img.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
+            print(f"Image resized to {photo_size}x{photo_size}")
             
             # Save to temporary file
-            temp_img_path = "temp_photo.png"
+            temp_dir = tempfile.gettempdir()
+            temp_img_path = os.path.join(temp_dir, "temp_photo.png")
             img.save(temp_img_path, format='PNG')
+            print(f"Image saved to temporary file: {temp_img_path}")
             
             # Draw in PDF
-            c.drawImage(temp_img_path, photo_x, photo_y, photo_size, photo_size)
+            c.drawImage(temp_img_path, photo_x, photo_y, width=photo_size, height=photo_size)
+            print("Image drawn in PDF")
             
             # Clean up temporary file
             os.remove(temp_img_path)
-            print("Photo added to PDF successfully")
+            print("Temporary file cleaned up")
             
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
+            import traceback
+            traceback.print_exc()
             # Draw white circle as fallback
             c.setFillColorRGB(1, 1, 1)
             c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
