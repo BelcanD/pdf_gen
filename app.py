@@ -452,15 +452,16 @@ def create_pdf(data, photo=None):
         c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Start content below photo circle
-    y_position = height - photo_size - 60
-    
-    # Draw Name and Title
+    y_position = height - name_section_height - 60  # Adjusted to start at the top of the black rectangle
+
+    # Draw Name and Title in the top right corner
     c.setFont("Helvetica-Bold", 20)
     c.setFillColorRGB(1, 1, 1)  # White color for text
-    c.drawString(20, y_position, data['name'])  # Draw name
+    name_x_position = sidebar_width + right_width - 20  # Right-aligned
+    c.drawString(name_x_position - c.stringWidth(data['name']), y_position, data['name'])  # Draw name
     y_position -= 25  # Move down for title
     c.setFont("Helvetica", 16)
-    c.drawString(20, y_position, data['title'])  # Draw title
+    c.drawString(name_x_position - c.stringWidth(data['title']), y_position, data['title'])  # Draw title
     y_position -= 40  # Additional space before About Me section
 
     # About me section
