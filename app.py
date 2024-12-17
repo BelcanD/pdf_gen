@@ -337,10 +337,12 @@ def create_pdf(data, photo=None):
     c.setFillColorRGB(0.1, 0.1, 0.1)  # Dark gray/black
     c.rect(0, 0, width/3, height, fill=1)
     
-    # Add photo if provided
+    # Modified photo handling
     if photo:
         try:
+            photo.seek(0)  # Reset buffer position
             img = Image.open(photo)
+            
             # Convert RGBA to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
                 background = Image.new('RGB', img.size, (255, 255, 255))
@@ -354,7 +356,10 @@ def create_pdf(data, photo=None):
             img = img.crop((left, top, left + size, top + size))
             
             # Resize to fit
-            img = img.resize((int(width/3 - 40), int(width/3 - 40)))
+            photo_size = int(width/3 - 40)
+            img = img.resize((photo_size, photo_size))
+            
+            # Save processed image
             img_buffer = BytesIO()
             img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
@@ -362,12 +367,17 @@ def create_pdf(data, photo=None):
             # Calculate position for centered photo
             photo_x = 20
             photo_y = height - (width/3 - 20)
-            c.drawImage(img_buffer, photo_x, photo_y, width/3 - 40, width/3 - 40)
+            
+            # Draw photo
+            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
+            
+            # Start content below photo
+            y_position = height - (width/3 + 40)
         except Exception as e:
-            print(f"Error processing image: {str(e)}")  # For debugging
-    
-    # Start content below photo
-    y_position = height - (width/3 + 20)
+            print(f"Error processing image: {str(e)}")
+            y_position = height - 100
+    else:
+        y_position = height - 100
     
     # Add content to sidebar (white text)
     c.setFillColorRGB(1, 1, 1)  # White color
@@ -510,11 +520,17 @@ def generate_pdf():
             'skill_levels': request.form.getlist('skill_levels[]')
         }
         
+        # Modified photo handling
         photo = None
         if 'photo' in request.files:
             file = request.files['photo']
-            if file and allowed_file(file.filename):
-                photo = file
+            if file and file.filename != '':
+                try:
+                    # Read the image directly into memory
+                    photo_data = BytesIO(file.read())
+                    photo = photo_data
+                except Exception as e:
+                    print(f"Error reading photo: {str(e)}")
 
         pdf = create_pdf(data, photo)
         
