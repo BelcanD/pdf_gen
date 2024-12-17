@@ -5,8 +5,16 @@ from reportlab.lib import colors
 from io import BytesIO
 from PIL import Image
 import base64
+import os
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 template = """
 <!DOCTYPE html>
@@ -331,22 +339,32 @@ def create_pdf(data, photo=None):
     
     # Add photo if provided
     if photo:
-        img = Image.open(photo)
-        # Crop to square
-        size = min(img.size)
-        left = (img.size[0] - size) // 2
-        top = (img.size[1] - size) // 2
-        img = img.crop((left, top, left + size, top + size))
-        # Resize to fit
-        img = img.resize((int(width/3 - 40), int(width/3 - 40)))
-        img_buffer = BytesIO()
-        img.save(img_buffer, format='PNG')
-        img_buffer.seek(0)
-        
-        # Calculate position for centered photo
-        photo_x = 20
-        photo_y = height - (width/3 - 20)
-        c.drawImage(img_buffer, photo_x, photo_y, width/3 - 40, width/3 - 40)
+        try:
+            img = Image.open(photo)
+            # Convert RGBA to RGB if necessary
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1])
+                img = background
+            
+            # Crop to square
+            size = min(img.size)
+            left = (img.size[0] - size) // 2
+            top = (img.size[1] - size) // 2
+            img = img.crop((left, top, left + size, top + size))
+            
+            # Resize to fit
+            img = img.resize((int(width/3 - 40), int(width/3 - 40)))
+            img_buffer = BytesIO()
+            img.save(img_buffer, format='PNG')
+            img_buffer.seek(0)
+            
+            # Calculate position for centered photo
+            photo_x = 20
+            photo_y = height - (width/3 - 20)
+            c.drawImage(img_buffer, photo_x, photo_y, width/3 - 40, width/3 - 40)
+        except Exception as e:
+            print(f"Error processing image: {str(e)}")  # For debugging
     
     # Start content below photo
     y_position = height - (width/3 + 20)
@@ -474,32 +492,41 @@ def home():
 
 @app.route('/generate', methods=['POST'])
 def generate_pdf():
-    data = {
-        'name': request.form['name'],
-        'title': request.form['title'],
-        'about': request.form['about'],
-        'phone': request.form['phone'],
-        'email': request.form['email'],
-        'address': request.form['address'],
-        'edu_years': request.form.getlist('edu_years[]'),
-        'edu_school': request.form.getlist('edu_school[]'),
-        'edu_location': request.form.getlist('edu_location[]'),
-        'exp_years': request.form.getlist('exp_years[]'),
-        'exp_position': request.form.getlist('exp_position[]'),
-        'exp_description': request.form.getlist('exp_description[]'),
-        'skill_names': request.form.getlist('skill_names[]'),
-        'skill_levels': request.form.getlist('skill_levels[]')
-    }
-    
-    photo = request.files.get('photo')
-    pdf = create_pdf(data, photo)
-    
-    return send_file(
-        pdf,
-        download_name='document.pdf',
-        as_attachment=True,
-        mimetype='application/pdf'
-    )
+    try:
+        data = {
+            'name': request.form['name'],
+            'title': request.form['title'],
+            'about': request.form['about'],
+            'phone': request.form['phone'],
+            'email': request.form['email'],
+            'address': request.form['address'],
+            'edu_years': request.form.getlist('edu_years[]'),
+            'edu_school': request.form.getlist('edu_school[]'),
+            'edu_location': request.form.getlist('edu_location[]'),
+            'exp_years': request.form.getlist('exp_years[]'),
+            'exp_position': request.form.getlist('exp_position[]'),
+            'exp_description': request.form.getlist('exp_description[]'),
+            'skill_names': request.form.getlist('skill_names[]'),
+            'skill_levels': request.form.getlist('skill_levels[]')
+        }
+        
+        photo = None
+        if 'photo' in request.files:
+            file = request.files['photo']
+            if file and allowed_file(file.filename):
+                photo = file
+
+        pdf = create_pdf(data, photo)
+        
+        return send_file(
+            pdf,
+            download_name='document.pdf',
+            as_attachment=True,
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        print(f"Error: {str(e)}")  # For debugging
+        return "An error occurred while generating the PDF", 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
