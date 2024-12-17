@@ -369,12 +369,12 @@ def create_pdf(data, photo=None):
     width, height = A4
 
     # Add black sidebar with slightly reduced width
-    sidebar_width = width/3 - 10  # Reduced sidebar width
+    sidebar_width = width/3 - 10
     c.setFillColorRGB(0.1, 0.1, 0.1)
     c.rect(0, 0, sidebar_width, height, fill=1)
     
     # Calculate photo dimensions and position
-    photo_size = int(sidebar_width - 40)  # Adjusted photo size
+    photo_size = int(sidebar_width - 40)
     photo_x = 20
     photo_y = height - photo_size - 20
     
@@ -417,14 +417,45 @@ def create_pdf(data, photo=None):
         c.setFillColorRGB(1, 1, 1)
         c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
-    # Start content below photo circle
+    # Name and title section in sidebar
     y_position = height - photo_size - 60
     
-    # Add content to sidebar (white text)
-    c.setFillColorRGB(1, 1, 1)  # White color
+    # Calculate center position for name and title
+    name_font_size = 24
+    title_font_size = 16
+    c.setFont("Helvetica-Bold", name_font_size)
+    
+    # Calculate text widths for centering
+    name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
+    title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
+    
+    # Calculate x positions for centering within sidebar
+    name_x = (sidebar_width - name_width) / 2
+    
+    # Draw name in white
+    c.setFillColorRGB(1, 1, 1)
+    c.drawString(name_x, y_position, data['name'])
+    
+    # Draw underline in white
+    line_y = y_position - 5
+    line_width = name_width + 20
+    line_x_start = name_x - 10
+    c.setLineWidth(1)
+    c.setStrokeColorRGB(1, 1, 1)
+    c.line(line_x_start, line_y, line_x_start + line_width, line_y)
+    
+    # Draw title
+    y_position -= 30
+    c.setFont("Helvetica", title_font_size)
+    title_x = (sidebar_width - title_width) / 2
+    c.setFillColorRGB(0.6, 0.6, 0.6)  # Light gray for title
+    c.drawString(title_x, y_position, data['title'])
+    
+    y_position -= 40
     
     # About me section
     c.setFont("Helvetica-Bold", 16)
+    c.setFillColorRGB(1, 1, 1)
     c.drawString(20, y_position, "About me")
     y_position -= 25
     
@@ -463,55 +494,12 @@ def create_pdf(data, photo=None):
         y_position -= 25
 
     # Main content area (right side)
-    right_margin = sidebar_width + 50  # Adjusted right margin
+    right_margin = sidebar_width + 50
     y_position = height - 100
-    right_width = width - right_margin - 60  # Width for right side text
+    right_width = width - right_margin - 60
     
-    # Name and title section with black background
-    name_section_height = 100  # Height for name section
-    name_section_width = right_width + 40  # Width for name section
-    
-    # Draw black background for name section
-    c.setFillColorRGB(0.1, 0.1, 0.1)  # Same black as sidebar
-    c.rect(right_margin - 20, y_position - 60, name_section_width, name_section_height, fill=1)
-    
-    # Calculate center position for name and title
-    name_font_size = 24
-    title_font_size = 16
-    c.setFont("Helvetica-Bold", name_font_size)
-    
-    # Calculate text widths for centering
-    name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
-    title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
-    
-    # Calculate x positions for centering within black section
-    name_x = right_margin + (name_section_width - name_width) / 2 - 20
-    
-    # Draw name in white
-    c.setFillColorRGB(1, 1, 1)  # White text
-    c.drawString(name_x, y_position, data['name'])
-    
-    # Draw underline in white
-    line_y = y_position - 5
-    line_width = name_width + 40
-    line_x_start = name_x - 20
-    c.setLineWidth(1)
-    c.setStrokeColorRGB(1, 1, 1)  # White line
-    c.line(line_x_start, line_y, line_x_start + line_width, line_y)
-    
-    # Draw title
-    y_position -= 30
-    c.setFont("Helvetica", title_font_size)
-    title_x = right_margin + (name_section_width - title_width) / 2 - 20
-    c.setFillColorRGB(0.8, 0.8, 0.8)  # Light gray for title
-    c.drawString(title_x, y_position, data['title'])
-    
-    y_position -= 50  # Extra space after title section
-    
-    # Reset text color to black for rest of content
-    c.setFillColorRGB(0, 0, 0)
-
     # Education section
+    c.setFillColorRGB(0, 0, 0)  # Reset to black for main content
     c.setFont("Helvetica-Bold", 18)
     c.drawString(right_margin, y_position, "Education")
     y_position -= 30
