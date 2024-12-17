@@ -459,7 +459,91 @@ def create_pdf(data, photo=None):
         level_width = (float(level) / 100) * 80
         c.rect(20, y_position - 10, level_width, 5, fill=1)
         y_position -= 25
+
+    # Main content area (right side)
+    right_margin = sidebar_width + 50
+    main_y_position = height - 100
+    right_width = width - right_margin - 60
+
+    # Name and title section with black background
+    name_section_height = 120
+    name_section_width = right_width + 60
+    name_section_x = right_margin - 30
+    name_section_y = height - name_section_height - 20
+
+    # Draw black background for name section
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.rect(name_section_x, name_section_y, name_section_width, name_section_height, fill=1)
+
+    # Draw name and title
+    name_font_size = 24
+    title_font_size = 16
+    c.setFont("Helvetica-Bold", name_font_size)
     
+    # Calculate text widths for centering
+    name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
+    title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
+    
+    # Center text in black section
+    name_x = name_section_x + (name_section_width - name_width) / 2
+    name_y = name_section_y + name_section_height - 40
+    
+    # Draw name in white
+    c.setFillColorRGB(1, 1, 1)
+    c.drawString(name_x, name_y, data['name'])
+    
+    # Draw underline
+    line_y = name_y - 5
+    line_width = name_width + 20
+    line_x_start = name_x - 10
+    c.setLineWidth(1)
+    c.setStrokeColorRGB(1, 1, 1)
+    c.line(line_x_start, line_y, line_x_start + line_width, line_y)
+    
+    # Draw title
+    c.setFont("Helvetica", title_font_size)
+    title_x = name_section_x + (name_section_width - title_width) / 2
+    title_y = name_y - 30
+    c.setFillColorRGB(0.6, 0.6, 0.6)
+    c.drawString(title_x, title_y, data['title'])
+
+    # Start main content below name section
+    main_y_position = name_section_y - 40
+
+    # Education section
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(right_margin, main_y_position, "Education")
+    main_y_position -= 30
+    
+    for i in range(len(data['edu_years'])):
+        # Timeline dot
+        c.circle(right_margin - 15, main_y_position + 5, 3, fill=1)
+        
+        c.setFont("Helvetica-Bold", 12)
+        main_y_position = wrap_text(data['edu_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
+        c.setFont("Helvetica", 10)
+        main_y_position = wrap_text(data['edu_school'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text(data['edu_location'][i], right_width, c, right_margin, main_y_position)
+        main_y_position -= 20
+
+    # Experience section
+    main_y_position -= 20
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(right_margin, main_y_position, "Experience")
+    main_y_position -= 30
+    
+    for i in range(len(data['exp_years'])):
+        # Timeline dot
+        c.circle(right_margin - 15, main_y_position + 5, 3, fill=1)
+        
+        c.setFont("Helvetica-Bold", 12)
+        main_y_position = wrap_text(data['exp_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
+        c.setFont("Helvetica", 10)
+        main_y_position = wrap_text(data['exp_position'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text(data['exp_description'][i], right_width, c, right_margin, main_y_position)
+        main_y_position -= 20
+
     c.save()
     buffer.seek(0)
     return buffer
