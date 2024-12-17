@@ -17,6 +17,40 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
+    """
+    Wraps text to maximum 25 characters per line
+    """
+    c.setFont(font_name, font_size)
+    words = text.split()
+    line = ""
+    char_count = 0
+    max_chars = 25
+    
+    for word in words:
+        test_line = f"{line} {word}".strip()
+        if len(test_line) > max_chars:
+            if len(line) > max_chars:
+                print(f"Warning: Line exceeds {max_chars} characters: '{line}'")
+            if line:
+                c.drawString(x_pos, y_pos, line[:max_chars])
+                y_pos -= font_size + 4
+            line = word
+            char_count = len(word)
+        else:
+            line = test_line
+            char_count = len(line)
+    
+    if line:
+        if len(line) > max_chars:
+            print(f"Warning: Line exceeds {max_chars} characters: '{line}'")
+            c.drawString(x_pos, y_pos, line[:max_chars])
+        else:
+            c.drawString(x_pos, y_pos, line)
+        y_pos -= font_size + 4
+    
+    return y_pos
+
 template = """
 <!DOCTYPE html>
 <html lang="en">
@@ -328,40 +362,6 @@ template = """
 </body>
 </html>
 """
-
-def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
-    """
-    Wraps text to maximum 30 characters per line and ensures it stays within margins
-    """
-    c.setFont(font_name, font_size)
-    words = text.split()
-    line = ""
-    char_count = 0
-    max_chars = 25  # Reduced from 30 to ensure text stays within margins
-    
-    for word in words:
-        # Check if adding this word would exceed the character limit
-        test_line = f"{line} {word}".strip()
-        if len(test_line) > max_chars:
-            # Current line is at limit, print it and start new line
-            if line:  # Only print if there's text to print
-                c.drawString(x_pos, y_pos, line[:max_chars])
-                y_pos -= font_size + 4  # Increased line spacing
-            line = word
-            char_count = len(word)
-        else:
-            line = test_line
-            char_count = len(line)
-    
-    # Print remaining text
-    if line:
-        if len(line) > max_chars:
-            c.drawString(x_pos, y_pos, line[:max_chars])
-        else:
-            c.drawString(x_pos, y_pos, line)
-        y_pos -= font_size + 4
-    
-    return y_position
 
 def create_pdf(data, photo=None):
     buffer = BytesIO()
