@@ -371,7 +371,15 @@ def create_pdf(data, photo=None):
     # Add black sidebar with slightly reduced width
     sidebar_width = width/3 - 10
     c.setFillColorRGB(0.1, 0.1, 0.1)
+    
+    # Name section dimensions
+    name_section_height = 120
+    
+    # Draw black background as one piece for sidebar and name section
+    # First draw the full height sidebar
     c.rect(0, 0, sidebar_width, height, fill=1)
+    # Then draw the name section extending from sidebar
+    c.rect(sidebar_width, height - name_section_height, width - sidebar_width, name_section_height, fill=1)
     
     # Calculate photo dimensions and position
     photo_size = int(sidebar_width - 40)
@@ -480,12 +488,13 @@ def create_pdf(data, photo=None):
     title_font_size = 16
     c.setFont("Helvetica-Bold", name_font_size)
     
-    # Calculate text widths for centering
+    # Calculate text widths for centering in the right section only
     name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
     title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
     
-    # Center text in black section
-    name_x = name_section_x + (name_section_width - name_width) / 2
+    # Position text in right section with margin
+    right_section_margin = 50  # Margin from the start of right section
+    name_x = name_section_x + right_section_margin
     name_y = name_section_y + name_section_height - 40
     
     # Draw name in white
@@ -502,7 +511,7 @@ def create_pdf(data, photo=None):
     
     # Draw title
     c.setFont("Helvetica", title_font_size)
-    title_x = name_section_x + (name_section_width - title_width) / 2
+    title_x = name_x  # Align title with name
     title_y = name_y - 30
     c.setFillColorRGB(0.6, 0.6, 0.6)
     c.drawString(title_x, title_y, data['title'])
