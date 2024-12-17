@@ -469,18 +469,18 @@ def create_pdf(data, photo=None):
         y_position -= 25
 
     # Main content area (right side)
-    right_margin = sidebar_width + 50
+    right_margin = sidebar_width + 30  # Reduced margin
     main_y_position = height - 100
-    right_width = width - right_margin - 60
-
+    right_width = width - right_margin - 40  # Adjusted width for content
+    
     # Name and title section with black background extending from sidebar
     name_section_height = 120
-    name_section_width = width - sidebar_width  # Extend to right edge
-    name_section_x = sidebar_width  # Start from where sidebar ends
+    name_section_width = width - sidebar_width
+    name_section_x = sidebar_width
     name_section_y = height - name_section_height
 
     # Draw black background for name section
-    c.setFillColorRGB(0.1, 0.1, 0.1)  # Same black as sidebar
+    c.setFillColorRGB(0.1, 0.1, 0.1)
     c.rect(name_section_x, name_section_y, name_section_width, name_section_height, fill=1)
 
     # Draw name and title
@@ -493,7 +493,7 @@ def create_pdf(data, photo=None):
     title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
     
     # Position text in right section with margin
-    right_section_margin = 50  # Margin from the start of right section
+    right_section_margin = 40  # Reduced margin
     name_x = name_section_x + right_section_margin
     name_y = name_section_y + name_section_height - 40
     
@@ -503,7 +503,7 @@ def create_pdf(data, photo=None):
     
     # Draw underline
     line_y = name_y - 5
-    line_width = name_width + 20
+    line_width = min(name_width + 20, name_section_width - right_section_margin * 2)  # Limit line width
     line_x_start = name_x - 10
     c.setLineWidth(1)
     c.setStrokeColorRGB(1, 1, 1)
@@ -511,46 +511,54 @@ def create_pdf(data, photo=None):
     
     # Draw title
     c.setFont("Helvetica", title_font_size)
-    title_x = name_x  # Align title with name
+    title_x = name_x
     title_y = name_y - 30
     c.setFillColorRGB(0.6, 0.6, 0.6)
     c.drawString(title_x, title_y, data['title'])
 
-    # Start main content below name section
-    main_y_position = name_section_y - 40
+    # Adjust wrap_text function to use smaller max_chars
+    def wrap_text_with_limit(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
+        c.setFont(font_name, font_size)
+        words = text.split()
+        line = ""
+        max_chars = 20  # Reduced character limit
+        
+        for word in words:
+            test_line = f"{line} {word}".strip()
+            if len(test_line) > max_chars:
+                if line:
+                    c.drawString(x_pos, y_pos, line[:max_chars])
+                    y_pos -= font_size + 4
+                line = word
+            else:
+                line = test_line
+        
+        if line:
+            c.drawString(x_pos, y_pos, line[:max_chars])
+            y_pos -= font_size + 4
+        
+        return y_pos
 
-    # Education section
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, main_y_position, "Education")
-    main_y_position -= 30
-    
+    # Use the new wrap function for education and experience sections
     for i in range(len(data['edu_years'])):
-        # Timeline dot
         c.circle(right_margin - 15, main_y_position + 5, 3, fill=1)
         
         c.setFont("Helvetica-Bold", 12)
-        main_y_position = wrap_text(data['edu_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
+        main_y_position = wrap_text_with_limit(data['edu_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
         c.setFont("Helvetica", 10)
-        main_y_position = wrap_text(data['edu_school'][i], right_width, c, right_margin, main_y_position)
-        main_y_position = wrap_text(data['edu_location'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text_with_limit(data['edu_school'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text_with_limit(data['edu_location'][i], right_width, c, right_margin, main_y_position)
         main_y_position -= 20
 
-    # Experience section
-    main_y_position -= 20
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, main_y_position, "Experience")
-    main_y_position -= 30
-    
+    # Experience section with adjusted wrapping
     for i in range(len(data['exp_years'])):
-        # Timeline dot
         c.circle(right_margin - 15, main_y_position + 5, 3, fill=1)
         
         c.setFont("Helvetica-Bold", 12)
-        main_y_position = wrap_text(data['exp_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
+        main_y_position = wrap_text_with_limit(data['exp_years'][i], right_width, c, right_margin, main_y_position, "Helvetica-Bold", 12)
         c.setFont("Helvetica", 10)
-        main_y_position = wrap_text(data['exp_position'][i], right_width, c, right_margin, main_y_position)
-        main_y_position = wrap_text(data['exp_description'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text_with_limit(data['exp_position'][i], right_width, c, right_margin, main_y_position)
+        main_y_position = wrap_text_with_limit(data['exp_description'][i], right_width, c, right_margin, main_y_position)
         main_y_position -= 20
 
     c.save()
