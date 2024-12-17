@@ -469,13 +469,13 @@ def create_pdf(data, photo=None):
     c.drawString(title_x_position, title_y_position, data['title'])  # Draw title
 
     # Adjust "About Me" section position
-    y_position += 10  # Increase this value to move "About Me" section down
+    y_position += 1  # Increase this value to move "About Me" section down
 
     # About me section
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(1, 1, 1)
     c.drawString(20, y_position, "About me")
-    y_position -= 10
+    y_position -= 25
     
     # About text with wrapping
     y_position = wrap_text(data['about'], sidebar_width - 40, c, 20, y_position, "Helvetica", 10)
