@@ -417,41 +417,8 @@ def create_pdf(data, photo=None):
         c.setFillColorRGB(1, 1, 1)
         c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
-    # Name and title section in sidebar
+    # Start content below photo circle
     y_position = height - photo_size - 60
-    
-    # Calculate center position for name and title
-    name_font_size = 24
-    title_font_size = 16
-    c.setFont("Helvetica-Bold", name_font_size)
-    
-    # Calculate text widths for centering
-    name_width = c.stringWidth(data['name'], "Helvetica-Bold", name_font_size)
-    title_width = c.stringWidth(data['title'], "Helvetica", title_font_size)
-    
-    # Calculate x positions for centering within sidebar
-    name_x = (sidebar_width - name_width) / 2
-    
-    # Draw name in white
-    c.setFillColorRGB(1, 1, 1)
-    c.drawString(name_x, y_position, data['name'])
-    
-    # Draw underline in white
-    line_y = y_position - 5
-    line_width = name_width + 20
-    line_x_start = name_x - 10
-    c.setLineWidth(1)
-    c.setStrokeColorRGB(1, 1, 1)
-    c.line(line_x_start, line_y, line_x_start + line_width, line_y)
-    
-    # Draw title
-    y_position -= 30
-    c.setFont("Helvetica", title_font_size)
-    title_x = (sidebar_width - title_width) / 2
-    c.setFillColorRGB(0.6, 0.6, 0.6)  # Light gray for title
-    c.drawString(title_x, y_position, data['title'])
-    
-    y_position -= 40
     
     # About me section
     c.setFont("Helvetica-Bold", 16)
@@ -492,46 +459,7 @@ def create_pdf(data, photo=None):
         level_width = (float(level) / 100) * 80
         c.rect(20, y_position - 10, level_width, 5, fill=1)
         y_position -= 25
-
-    # Main content area (right side)
-    right_margin = sidebar_width + 50
-    y_position = height - 100
-    right_width = width - right_margin - 60
     
-    # Education section
-    c.setFillColorRGB(0, 0, 0)  # Reset to black for main content
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, y_position, "Education")
-    y_position -= 30
-    
-    for i in range(len(data['edu_years'])):
-        # Timeline dot
-        c.circle(right_margin - 15, y_position + 5, 3, fill=1)
-        
-        c.setFont("Helvetica-Bold", 12)
-        y_position = wrap_text(data['edu_years'][i], right_width, c, right_margin, y_position, "Helvetica-Bold", 12)
-        c.setFont("Helvetica", 10)
-        y_position = wrap_text(data['edu_school'][i], right_width, c, right_margin, y_position)
-        y_position = wrap_text(data['edu_location'][i], right_width, c, right_margin, y_position)
-        y_position -= 20
-
-    # Experience section
-    y_position -= 20
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(right_margin, y_position, "Experience")
-    y_position -= 30
-    
-    for i in range(len(data['exp_years'])):
-        # Timeline dot
-        c.circle(right_margin - 15, y_position + 5, 3, fill=1)
-        
-        c.setFont("Helvetica-Bold", 12)
-        y_position = wrap_text(data['exp_years'][i], right_width, c, right_margin, y_position, "Helvetica-Bold", 12)
-        c.setFont("Helvetica", 10)
-        y_position = wrap_text(data['exp_position'][i], right_width, c, right_margin, y_position)
-        y_position = wrap_text(data['exp_description'][i], right_width, c, right_margin, y_position)
-        y_position -= 20
-
     c.save()
     buffer.seek(0)
     return buffer
