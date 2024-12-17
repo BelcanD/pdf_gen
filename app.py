@@ -458,7 +458,7 @@ def create_pdf(data, photo=None):
     # Draw Name and Title at the center of the black rectangle
     center_x_position = sidebar_width + (right_width / 2)  # Center position in the black rectangle
     name_x_position = center_x_position - (c.stringWidth(data['name']) / 2)  # Center the name
-    title_y_position = height - 90  # Raise this value to move the title higher
+    title_y_position = height - 150 # Raise this value to move the title higher
     title_x_position = center_x_position - (c.stringWidth(data['title']) / 2)  # Center the title
 
     c.setFont("Helvetica-Bold", 20)
@@ -469,7 +469,7 @@ def create_pdf(data, photo=None):
     c.drawString(title_x_position, title_y_position, data['title'])  # Draw title
 
     # Adjust "About Me" section position
-    y_position += 10  # Move "About Me" section down slightly
+    y_position += 30  # Move "About Me" section down slightly
 
     # About me section
     c.setFont("Helvetica-Bold", 16)
