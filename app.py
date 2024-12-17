@@ -337,7 +337,7 @@ def create_pdf(data, photo=None):
     c.setFillColorRGB(0.1, 0.1, 0.1)  # Dark gray/black
     c.rect(0, 0, width/3, height, fill=1)
     
-    # Modified photo handling
+    # Modified photo handling - moved to top-left
     if photo:
         try:
             photo.seek(0)  # Reset buffer position
@@ -356,7 +356,7 @@ def create_pdf(data, photo=None):
             img = img.crop((left, top, left + size, top + size))
             
             # Resize to fit
-            photo_size = int(width/3 - 40)
+            photo_size = int(width/3 - 40)  # Slightly smaller than sidebar
             img = img.resize((photo_size, photo_size))
             
             # Save processed image
@@ -364,15 +364,15 @@ def create_pdf(data, photo=None):
             img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Calculate position for centered photo
-            photo_x = 20
-            photo_y = height - (width/3 - 20)
+            # Position photo in top-left corner with margin
+            photo_x = 20  # Left margin
+            photo_y = height - photo_size - 20  # Top margin
             
             # Draw photo
             c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
             
             # Start content below photo
-            y_position = height - (width/3 + 40)
+            y_position = height - photo_size - 60  # More space below photo
         except Exception as e:
             print(f"Error processing image: {str(e)}")
             y_position = height - 100
