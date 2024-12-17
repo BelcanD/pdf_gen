@@ -338,18 +338,17 @@ def create_pdf(data, photo=None):
     c.rect(0, 0, width/3, height, fill=1)
     
     # Calculate photo dimensions and position
-    photo_size = int(width/3 - 40)  # Slightly smaller for better margins
+    photo_size = int(width/3 - 40)
     photo_x = 20
     photo_y = height - photo_size - 20
     
-    # Draw white circle background for photo
-    c.setFillColorRGB(1, 1, 1)  # White color
+    # Draw white circle background
+    c.setFillColorRGB(1, 1, 1)
     c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Handle photo if provided
     if photo:
         try:
-            print("Processing photo...")
             photo.seek(0)
             img = Image.open(photo)
             
@@ -361,37 +360,20 @@ def create_pdf(data, photo=None):
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Make the image square first
-            size = min(img.size)
-            left = (img.size[0] - size) // 2
-            top = (img.size[1] - size) // 2
-            img = img.crop((left, top, left + size, top + size))
+            # Just resize to fit the space
+            img = img.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
             
-            # Create circular mask
-            mask = Image.new('L', (size, size), 0)
-            draw = ImageDraw.Draw(mask)
-            draw.ellipse((0, 0, size, size), fill=255)
-            
-            # Create output image with transparency
-            output = Image.new('RGBA', (size, size), (255, 255, 255, 0))
-            output.paste(img, (0, 0))
-            output.putalpha(mask)
-            
-            # Resize to fit the designated space
-            output = output.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
-            
-            # Save to temporary buffer
+            # Save to buffer
             img_buffer = BytesIO()
-            output.save(img_buffer, format='PNG')
+            img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Draw the masked photo
-            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
-            print("Photo successfully added to PDF")
+            # Draw in PDF
+            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
+            print("Photo added to PDF successfully")
             
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
-            # If photo processing fails, we still have the white circle background
     
     # Start content below photo circle
     y_position = height - photo_size - 60
@@ -537,31 +519,24 @@ def generate_pdf():
             'skill_levels': request.form.getlist('skill_levels[]')
         }
         
-        # Debug print
-        print("Files in request:", request.files)
-        
         photo = None
         if 'photo' in request.files:
             file = request.files['photo']
-            print("Filename:", file.filename)  # Debug print
             if file and file.filename != '':
-                try:
-                    # Read the image directly
-                    photo = BytesIO(file.read())
-                    print("Photo successfully read")  # Debug print
-                except Exception as e:
-                    print(f"Error reading photo: {str(e)}")
+                # Read the image directly into memory
+                photo = BytesIO(file.read())
+                print("Photo loaded successfully")  # Debug print
 
         pdf = create_pdf(data, photo)
         
         return send_file(
             pdf,
-            download_name='document.pdf',
+            download_name='resume.pdf',
             as_attachment=True,
             mimetype='application/pdf'
         )
     except Exception as e:
-        print(f"Error generating PDF: {str(e)}")  # Debug print
+        print(f"Error generating PDF: {str(e)}")
         return f"An error occurred while generating the PDF: {str(e)}", 500
 
 if __name__ == '__main__':
