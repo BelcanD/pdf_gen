@@ -469,7 +469,7 @@ def create_pdf(data, photo=None):
     c.drawString(title_x_position, title_y_position, data['title'])  # Draw title
 
     # Adjust "About Me" section position
-    y_position += 1  # Increase this value to move "About Me" section down
+    y_position += -5  # Increase this value to move "About Me" section down
 
     # About me section
     c.setFont("Helvetica-Bold", 16)
