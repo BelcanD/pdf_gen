@@ -3,7 +3,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw
 import base64
 import os
 
@@ -337,13 +337,13 @@ def create_pdf(data, photo=None):
     c.setFillColorRGB(0.1, 0.1, 0.1)
     c.rect(0, 0, width/3, height, fill=1)
     
-    # Add white circle for photo placeholder
+    # Calculate photo dimensions and position
     photo_size = int(width/3 - 40)
     photo_x = 20
     photo_y = height - photo_size - 20
     
     # Draw white circle background
-    c.setFillColorRGB(1, 1, 1)  # White color
+    c.setFillColorRGB(1, 1, 1)
     c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Handle photo if provided
@@ -352,7 +352,6 @@ def create_pdf(data, photo=None):
             print("Processing photo...")
             photo.seek(0)
             img = Image.open(photo)
-            print(f"Image opened, mode: {img.mode}, size: {img.size}")
             
             # Convert RGBA to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
@@ -360,27 +359,35 @@ def create_pdf(data, photo=None):
                 background.paste(img, mask=img.split()[-1])
                 img = background
             
-            # Crop to square
+            # Crop to circle
             size = min(img.size)
+            mask = Image.new('L', (size, size), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse((0, 0, size, size), fill=255)
+            
+            # Crop to square first
             left = (img.size[0] - size) // 2
             top = (img.size[1] - size) // 2
             img = img.crop((left, top, left + size, top + size))
             
+            # Apply circular mask
+            output = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+            output.paste(img, (0, 0))
+            output.putalpha(mask)
+            
             # Resize to fit
-            img = img.resize((photo_size, photo_size))
+            img = output.resize((photo_size, photo_size))
             
             # Save to buffer
             img_buffer = BytesIO()
             img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Draw photo
+            # Draw photo with mask
             c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
             print("Photo added to PDF")
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
-    else:
-        print("No photo provided")
     
     # Start content below photo circle
     y_position = height - photo_size - 60
