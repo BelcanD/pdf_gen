@@ -454,6 +454,15 @@ def create_pdf(data, photo=None):
     # Start content below photo circle
     y_position = height - photo_size - 60
     
+    # Draw Name and Title
+    c.setFont("Helvetica-Bold", 20)
+    c.setFillColorRGB(1, 1, 1)  # White color for text
+    c.drawString(20, y_position, data['name'])  # Draw name
+    y_position -= 25  # Move down for title
+    c.setFont("Helvetica", 16)
+    c.drawString(20, y_position, data['title'])  # Draw title
+    y_position -= 40  # Additional space before About Me section
+
     # About me section
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(1, 1, 1)
