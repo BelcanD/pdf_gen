@@ -1,3 +1,5 @@
 flask
 python-dotenv
+reportlab
+Pillow
 # Add any other dependencies your project uses 
