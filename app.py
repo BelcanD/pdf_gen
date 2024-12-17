@@ -337,11 +337,13 @@ def create_pdf(data, photo=None):
     c.setFillColorRGB(0.1, 0.1, 0.1)  # Dark gray/black
     c.rect(0, 0, width/3, height, fill=1)
     
-    # Modified photo handling - moved to top-left
+    # Handle photo
     if photo:
         try:
-            photo.seek(0)  # Reset buffer position
+            print("Processing photo...")  # Debug print
+            photo.seek(0)
             img = Image.open(photo)
+            print(f"Image opened, mode: {img.mode}, size: {img.size}")  # Debug print
             
             # Convert RGBA to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
@@ -356,27 +358,26 @@ def create_pdf(data, photo=None):
             img = img.crop((left, top, left + size, top + size))
             
             # Resize to fit
-            photo_size = int(width/3 - 40)  # Slightly smaller than sidebar
+            photo_size = int(width/3 - 40)
             img = img.resize((photo_size, photo_size))
             
-            # Save processed image
+            # Save to buffer
             img_buffer = BytesIO()
             img.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Position photo in top-left corner with margin
-            photo_x = 20  # Left margin
-            photo_y = height - photo_size - 20  # Top margin
-            
             # Draw photo
+            photo_x = 20
+            photo_y = height - photo_size - 20
             c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
+            print("Photo added to PDF")  # Debug print
             
-            # Start content below photo
-            y_position = height - photo_size - 60  # More space below photo
+            y_position = height - photo_size - 60
         except Exception as e:
-            print(f"Error processing image: {str(e)}")
+            print(f"Error processing photo: {str(e)}")  # Debug print
             y_position = height - 100
     else:
+        print("No photo provided")  # Debug print
         y_position = height - 100
     
     # Add content to sidebar (white text)
@@ -520,15 +521,18 @@ def generate_pdf():
             'skill_levels': request.form.getlist('skill_levels[]')
         }
         
-        # Modified photo handling
+        # Debug print
+        print("Files in request:", request.files)
+        
         photo = None
         if 'photo' in request.files:
             file = request.files['photo']
+            print("Filename:", file.filename)  # Debug print
             if file and file.filename != '':
                 try:
-                    # Read the image directly into memory
-                    photo_data = BytesIO(file.read())
-                    photo = photo_data
+                    # Read the image directly
+                    photo = BytesIO(file.read())
+                    print("Photo successfully read")  # Debug print
                 except Exception as e:
                     print(f"Error reading photo: {str(e)}")
 
@@ -541,8 +545,8 @@ def generate_pdf():
             mimetype='application/pdf'
         )
     except Exception as e:
-        print(f"Error: {str(e)}")  # For debugging
-        return "An error occurred while generating the PDF", 500
+        print(f"Error generating PDF: {str(e)}")  # Debug print
+        return f"An error occurred while generating the PDF: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
