@@ -6,15 +6,37 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import base64
 import os
+import tempfile
+import uuid
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_temp_photo(file):
+    if file and allowed_file(file.filename):
+        # Create a unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        temp_filename = f"{str(uuid.uuid4())}.{ext}"
+        temp_filepath = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+        
+        # Save the file
+        file.save(temp_filepath)
+        return temp_filepath
+    return None
+
+def cleanup_temp_file(filepath):
+    if filepath and os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception as e:
+            print(f"Error cleaning up temp file: {str(e)}")
 
 template = """
 <!DOCTYPE html>
@@ -515,6 +537,7 @@ def home():
 
 @app.route('/generate', methods=['POST'])
 def generate_pdf():
+    temp_filepath = None
     try:
         data = {
             'name': request.form['name'],
@@ -533,22 +556,18 @@ def generate_pdf():
             'skill_levels': request.form.getlist('skill_levels[]')
         }
         
-        # Debug print
-        print("Files in request:", request.files)
-        
         photo = None
         if 'photo' in request.files:
             file = request.files['photo']
-            print("Filename:", file.filename)  # Debug print
             if file and file.filename != '':
-                try:
-                    # Read the image directly
-                    photo = BytesIO(file.read())
-                    print("Photo successfully read")  # Debug print
-                except Exception as e:
-                    print(f"Error reading photo: {str(e)}")
+                temp_filepath = save_temp_photo(file)
+                if temp_filepath:
+                    photo = open(temp_filepath, 'rb')
 
         pdf = create_pdf(data, photo)
+        
+        if photo:
+            photo.close()
         
         return send_file(
             pdf,
@@ -557,8 +576,11 @@ def generate_pdf():
             mimetype='application/pdf'
         )
     except Exception as e:
-        print(f"Error generating PDF: {str(e)}")  # Debug print
+        print(f"Error generating PDF: {str(e)}")
         return f"An error occurred while generating the PDF: {str(e)}", 500
+    finally:
+        if temp_filepath:
+            cleanup_temp_file(temp_filepath)
 
 if __name__ == '__main__':
     app.run(debug=True) 
