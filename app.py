@@ -331,26 +331,27 @@ template = """
 
 def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
     """
-    Wraps text to specified width and returns the new y position
+    Wraps text to maximum 30 characters per line
     """
     c.setFont(font_name, font_size)
     words = text.split()
     line = ""
+    char_count = 0
+    
     for word in words:
-        # Test line length with added word
-        test_line = f"{line} {word}".strip()
-        # Get line width in points
-        line_width = c.stringWidth(test_line, font_name, font_size)
-        
-        if line_width > width:
-            # If line is too long, print current line and start new line
+        # Check if adding this word would exceed 30 characters
+        if char_count + len(word) + (1 if line else 0) > 30:
+            # Current line is at limit, print it and start new line
             c.drawString(x_pos, y_pos, line)
             line = word
-            y_pos -= font_size + 2  # Move down by font size plus 2 points
+            char_count = len(word)
+            y_pos -= font_size + 2
         else:
-            line = test_line
+            # Add word to current line
+            line = f"{line} {word}".strip()
+            char_count = len(line)
     
-    # Draw remaining text
+    # Print remaining text
     if line:
         c.drawString(x_pos, y_pos, line)
         y_pos -= font_size + 2
