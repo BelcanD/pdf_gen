@@ -329,6 +329,34 @@ template = """
 </html>
 """
 
+def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
+    """
+    Wraps text to specified width and returns the new y position
+    """
+    c.setFont(font_name, font_size)
+    words = text.split()
+    line = ""
+    for word in words:
+        # Test line length with added word
+        test_line = f"{line} {word}".strip()
+        # Get line width in points
+        line_width = c.stringWidth(test_line, font_name, font_size)
+        
+        if line_width > width:
+            # If line is too long, print current line and start new line
+            c.drawString(x_pos, y_pos, line)
+            line = word
+            y_pos -= font_size + 2  # Move down by font size plus 2 points
+        else:
+            line = test_line
+    
+    # Draw remaining text
+    if line:
+        c.drawString(x_pos, y_pos, line)
+        y_pos -= font_size + 2
+    
+    return y_pos
+
 def create_pdf(data, photo=None):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -357,30 +385,23 @@ def create_pdf(data, photo=None):
                 img = background
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
-            print("Image converted to RGB")
             
             # Resize to fit the space
             img = img.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
-            print(f"Image resized to {photo_size}x{photo_size}")
             
             # Save to temporary file
             temp_dir = tempfile.gettempdir()
             temp_img_path = os.path.join(temp_dir, "temp_photo.png")
             img.save(temp_img_path, format='PNG')
-            print(f"Image saved to temporary file: {temp_img_path}")
             
             # Draw in PDF
             c.drawImage(temp_img_path, photo_x, photo_y, width=photo_size, height=photo_size)
-            print("Image drawn in PDF")
             
             # Clean up temporary file
             os.remove(temp_img_path)
-            print("Temporary file cleaned up")
             
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
-            import traceback
-            traceback.print_exc()
             # Draw white circle as fallback
             c.setFillColorRGB(1, 1, 1)
             c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
@@ -400,35 +421,23 @@ def create_pdf(data, photo=None):
     c.drawString(20, y_position, "About me")
     y_position -= 25
     
-    # Split about text into multiple lines
-    c.setFont("Helvetica", 10)
-    words = data['about'].split()
-    line = ""
-    for word in words:
-        if len(line + word) < 25:
-            line += word + " "
-        else:
-            c.drawString(20, y_position, line)
-            y_position -= 15
-            line = word + " "
-    if line:
-        c.drawString(20, y_position, line)
+    # About text with wrapping
+    y_position = wrap_text(data['about'], width/3 - 40, c, 20, y_position, "Helvetica", 10)
     
     # Contact section
-    y_position -= 40
+    y_position -= 20
     c.setFont("Helvetica-Bold", 16)
     c.drawString(20, y_position, "Contact")
     y_position -= 25
     
+    # Contact details with wrapping
     c.setFont("Helvetica", 10)
-    c.drawString(20, y_position, data['phone'])
-    y_position -= 15
-    c.drawString(20, y_position, data['email'])
-    y_position -= 15
-    c.drawString(20, y_position, data['address'])
+    y_position = wrap_text(data['phone'], width/3 - 40, c, 20, y_position)
+    y_position = wrap_text(data['email'], width/3 - 40, c, 20, y_position)
+    y_position = wrap_text(data['address'], width/3 - 40, c, 20, y_position)
     
     # Expertise section
-    y_position -= 40
+    y_position -= 20
     c.setFont("Helvetica-Bold", 16)
     c.drawString(20, y_position, "Expertise")
     y_position -= 25
@@ -436,7 +445,7 @@ def create_pdf(data, photo=None):
     # Draw skill bars
     c.setFont("Helvetica", 10)
     for name, level in zip(data['skill_names'], data['skill_levels']):
-        c.drawString(20, y_position, name)
+        y_position = wrap_text(name, width/3 - 40, c, 20, y_position)
         # Draw skill bar background
         c.setFillColorRGB(0.3, 0.3, 0.3)
         c.rect(20, y_position - 10, 80, 5, fill=1)
@@ -449,15 +458,16 @@ def create_pdf(data, photo=None):
     # Main content area (right side)
     right_margin = width/3 + 40
     y_position = height - 100
+    right_width = width - right_margin - 40  # Width for right side text
     
     # Name and title
     c.setFillColorRGB(0, 0, 0)
     c.setFont("Helvetica-Bold", 24)
-    c.drawString(right_margin, y_position, data['name'])
-    y_position -= 30
+    y_position = wrap_text(data['name'], right_width, c, right_margin, y_position, "Helvetica-Bold", 24)
+    y_position -= 10
     c.setFont("Helvetica", 16)
-    c.drawString(right_margin, y_position, data['title'])
-    y_position -= 50
+    y_position = wrap_text(data['title'], right_width, c, right_margin, y_position, "Helvetica", 16)
+    y_position -= 30
 
     # Education section
     c.setFont("Helvetica-Bold", 18)
@@ -469,11 +479,11 @@ def create_pdf(data, photo=None):
         c.circle(right_margin - 15, y_position + 5, 3, fill=1)
         
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(right_margin, y_position, data['edu_years'][i])
+        y_position = wrap_text(data['edu_years'][i], right_width, c, right_margin, y_position, "Helvetica-Bold", 12)
         c.setFont("Helvetica", 10)
-        c.drawString(right_margin, y_position-15, data['edu_school'][i])
-        c.drawString(right_margin, y_position-30, data['edu_location'][i])
-        y_position -= 50
+        y_position = wrap_text(data['edu_school'][i], right_width, c, right_margin, y_position)
+        y_position = wrap_text(data['edu_location'][i], right_width, c, right_margin, y_position)
+        y_position -= 20
 
     # Experience section
     y_position -= 20
@@ -486,24 +496,11 @@ def create_pdf(data, photo=None):
         c.circle(right_margin - 15, y_position + 5, 3, fill=1)
         
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(right_margin, y_position, data['exp_years'][i])
+        y_position = wrap_text(data['exp_years'][i], right_width, c, right_margin, y_position, "Helvetica-Bold", 12)
         c.setFont("Helvetica", 10)
-        c.drawString(right_margin, y_position-15, data['exp_position'][i])
-        
-        # Split description into multiple lines
-        words = data['exp_description'][i].split()
-        line = ""
-        desc_y = y_position-30
-        for word in words:
-            if len(line + word) < 50:
-                line += word + " "
-            else:
-                c.drawString(right_margin, desc_y, line)
-                desc_y -= 15
-                line = word + " "
-        if line:
-            c.drawString(right_margin, desc_y, line)
-        y_position = desc_y - 30
+        y_position = wrap_text(data['exp_position'][i], right_width, c, right_margin, y_position)
+        y_position = wrap_text(data['exp_description'][i], right_width, c, right_margin, y_position)
+        y_position -= 20
 
     c.save()
     buffer.seek(0)
