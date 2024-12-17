@@ -334,16 +334,25 @@ def create_pdf(data, photo=None):
     width, height = A4
 
     # Add black sidebar
-    c.setFillColorRGB(0.1, 0.1, 0.1)  # Dark gray/black
+    c.setFillColorRGB(0.1, 0.1, 0.1)
     c.rect(0, 0, width/3, height, fill=1)
     
-    # Handle photo
+    # Add white circle for photo placeholder
+    photo_size = int(width/3 - 40)
+    photo_x = 20
+    photo_y = height - photo_size - 20
+    
+    # Draw white circle background
+    c.setFillColorRGB(1, 1, 1)  # White color
+    c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
+    
+    # Handle photo if provided
     if photo:
         try:
-            print("Processing photo...")  # Debug print
+            print("Processing photo...")
             photo.seek(0)
             img = Image.open(photo)
-            print(f"Image opened, mode: {img.mode}, size: {img.size}")  # Debug print
+            print(f"Image opened, mode: {img.mode}, size: {img.size}")
             
             # Convert RGBA to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
@@ -358,7 +367,6 @@ def create_pdf(data, photo=None):
             img = img.crop((left, top, left + size, top + size))
             
             # Resize to fit
-            photo_size = int(width/3 - 40)
             img = img.resize((photo_size, photo_size))
             
             # Save to buffer
@@ -367,18 +375,15 @@ def create_pdf(data, photo=None):
             img_buffer.seek(0)
             
             # Draw photo
-            photo_x = 20
-            photo_y = height - photo_size - 20
-            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
-            print("Photo added to PDF")  # Debug print
-            
-            y_position = height - photo_size - 60
+            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
+            print("Photo added to PDF")
         except Exception as e:
-            print(f"Error processing photo: {str(e)}")  # Debug print
-            y_position = height - 100
+            print(f"Error processing photo: {str(e)}")
     else:
-        print("No photo provided")  # Debug print
-        y_position = height - 100
+        print("No photo provided")
+    
+    # Start content below photo circle
+    y_position = height - photo_size - 60
     
     # Add content to sidebar (white text)
     c.setFillColorRGB(1, 1, 1)  # White color
