@@ -6,37 +6,15 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 import base64
 import os
-import tempfile
-import uuid
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def save_temp_photo(file):
-    if file and allowed_file(file.filename):
-        # Create a unique filename
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        temp_filename = f"{str(uuid.uuid4())}.{ext}"
-        temp_filepath = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
-        
-        # Save the file
-        file.save(temp_filepath)
-        return temp_filepath
-    return None
-
-def cleanup_temp_file(filepath):
-    if filepath and os.path.exists(filepath):
-        try:
-            os.remove(filepath)
-        except Exception as e:
-            print(f"Error cleaning up temp file: {str(e)}")
 
 template = """
 <!DOCTYPE html>
@@ -360,12 +338,12 @@ def create_pdf(data, photo=None):
     c.rect(0, 0, width/3, height, fill=1)
     
     # Calculate photo dimensions and position
-    photo_size = int(width/3 - 40)
+    photo_size = int(width/3 - 40)  # Slightly smaller for better margins
     photo_x = 20
     photo_y = height - photo_size - 20
     
-    # Draw white circle background
-    c.setFillColorRGB(1, 1, 1)
+    # Draw white circle background for photo
+    c.setFillColorRGB(1, 1, 1)  # White color
     c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Handle photo if provided
@@ -375,41 +353,45 @@ def create_pdf(data, photo=None):
             photo.seek(0)
             img = Image.open(photo)
             
-            # Convert RGBA to RGB if necessary
+            # Convert to RGB if necessary
             if img.mode in ('RGBA', 'LA'):
                 background = Image.new('RGB', img.size, (255, 255, 255))
                 background.paste(img, mask=img.split()[-1])
                 img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
             
-            # Crop to circle
+            # Make the image square first
             size = min(img.size)
-            mask = Image.new('L', (size, size), 0)
-            draw = ImageDraw.Draw(mask)
-            draw.ellipse((0, 0, size, size), fill=255)
-            
-            # Crop to square first
             left = (img.size[0] - size) // 2
             top = (img.size[1] - size) // 2
             img = img.crop((left, top, left + size, top + size))
             
-            # Apply circular mask
-            output = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+            # Create circular mask
+            mask = Image.new('L', (size, size), 0)
+            draw = ImageDraw.Draw(mask)
+            draw.ellipse((0, 0, size, size), fill=255)
+            
+            # Create output image with transparency
+            output = Image.new('RGBA', (size, size), (255, 255, 255, 0))
             output.paste(img, (0, 0))
             output.putalpha(mask)
             
-            # Resize to fit
-            img = output.resize((photo_size, photo_size))
+            # Resize to fit the designated space
+            output = output.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
             
-            # Save to buffer
+            # Save to temporary buffer
             img_buffer = BytesIO()
-            img.save(img_buffer, format='PNG')
+            output.save(img_buffer, format='PNG')
             img_buffer.seek(0)
             
-            # Draw photo with mask
+            # Draw the masked photo
             c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size, mask='auto')
-            print("Photo added to PDF")
+            print("Photo successfully added to PDF")
+            
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
+            # If photo processing fails, we still have the white circle background
     
     # Start content below photo circle
     y_position = height - photo_size - 60
@@ -537,7 +519,6 @@ def home():
 
 @app.route('/generate', methods=['POST'])
 def generate_pdf():
-    temp_filepath = None
     try:
         data = {
             'name': request.form['name'],
@@ -556,18 +537,22 @@ def generate_pdf():
             'skill_levels': request.form.getlist('skill_levels[]')
         }
         
+        # Debug print
+        print("Files in request:", request.files)
+        
         photo = None
         if 'photo' in request.files:
             file = request.files['photo']
+            print("Filename:", file.filename)  # Debug print
             if file and file.filename != '':
-                temp_filepath = save_temp_photo(file)
-                if temp_filepath:
-                    photo = open(temp_filepath, 'rb')
+                try:
+                    # Read the image directly
+                    photo = BytesIO(file.read())
+                    print("Photo successfully read")  # Debug print
+                except Exception as e:
+                    print(f"Error reading photo: {str(e)}")
 
         pdf = create_pdf(data, photo)
-        
-        if photo:
-            photo.close()
         
         return send_file(
             pdf,
@@ -576,11 +561,8 @@ def generate_pdf():
             mimetype='application/pdf'
         )
     except Exception as e:
-        print(f"Error generating PDF: {str(e)}")
+        print(f"Error generating PDF: {str(e)}")  # Debug print
         return f"An error occurred while generating the PDF: {str(e)}", 500
-    finally:
-        if temp_filepath:
-            cleanup_temp_file(temp_filepath)
 
 if __name__ == '__main__':
     app.run(debug=True) 
