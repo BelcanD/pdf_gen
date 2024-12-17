@@ -395,23 +395,24 @@ def create_pdf(data, photo=None):
     width, height = A4
 
     # Add black sidebar with slightly reduced width
-    sidebar_width = width/3 - 10
+    sidebar_width = width / 3 - 10
     c.setFillColorRGB(0.1, 0.1, 0.1)
-    
+
     # Name section dimensions
     name_section_height = 120
-    
+
     # Draw black background as one piece for sidebar and name section
-    # First draw the full height sidebar
     c.rect(0, 0, sidebar_width, height, fill=1)
-    # Then draw the name section extending from sidebar
     c.rect(sidebar_width, height - name_section_height, width - sidebar_width, name_section_height, fill=1)
-    
+
+    # Calculate right width after sidebar width is defined
+    right_width = width - sidebar_width - 40  # Adjusted width for content
+
     # Calculate photo dimensions and position
     photo_size = int(sidebar_width - 40)
     photo_x = 20
     photo_y = height - photo_size - 20
-    
+
     # Handle photo if provided
     if photo:
         try:
