@@ -465,14 +465,14 @@ def create_pdf(data, photo=None):
     main_y_position = height - 100
     right_width = width - right_margin - 60
 
-    # Name and title section with black background
+    # Name and title section with black background extending from sidebar
     name_section_height = 120
-    name_section_width = right_width + 60
-    name_section_x = right_margin - 30
-    name_section_y = height - name_section_height - 20
+    name_section_width = width - sidebar_width  # Extend to right edge
+    name_section_x = sidebar_width  # Start from where sidebar ends
+    name_section_y = height - name_section_height
 
     # Draw black background for name section
-    c.setFillColorRGB(0.1, 0.1, 0.1)
+    c.setFillColorRGB(0.1, 0.1, 0.1)  # Same black as sidebar
     c.rect(name_section_x, name_section_y, name_section_width, name_section_height, fill=1)
 
     # Draw name and title
