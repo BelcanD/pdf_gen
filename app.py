@@ -342,10 +342,6 @@ def create_pdf(data, photo=None):
     photo_x = 20
     photo_y = height - photo_size - 20
     
-    # Draw white circle background
-    c.setFillColorRGB(1, 1, 1)
-    c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
-    
     # Handle photo if provided
     if photo:
         try:
@@ -360,20 +356,29 @@ def create_pdf(data, photo=None):
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
             
-            # Just resize to fit the space
+            # Resize to fit the space
             img = img.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
             
-            # Save to buffer
-            img_buffer = BytesIO()
-            img.save(img_buffer, format='PNG')
-            img_buffer.seek(0)
+            # Save to temporary file
+            temp_img_path = "temp_photo.png"
+            img.save(temp_img_path, format='PNG')
             
             # Draw in PDF
-            c.drawImage(img_buffer, photo_x, photo_y, photo_size, photo_size)
+            c.drawImage(temp_img_path, photo_x, photo_y, photo_size, photo_size)
+            
+            # Clean up temporary file
+            os.remove(temp_img_path)
             print("Photo added to PDF successfully")
             
         except Exception as e:
             print(f"Error processing photo: {str(e)}")
+            # Draw white circle as fallback
+            c.setFillColorRGB(1, 1, 1)
+            c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
+    else:
+        # Draw white circle if no photo
+        c.setFillColorRGB(1, 1, 1)
+        c.circle(photo_x + photo_size/2, photo_y + photo_size/2, photo_size/2, fill=1)
     
     # Start content below photo circle
     y_position = height - photo_size - 60
