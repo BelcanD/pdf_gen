@@ -331,44 +331,50 @@ template = """
 
 def wrap_text(text, width, c, x_pos, y_pos, font_name="Helvetica", font_size=10):
     """
-    Wraps text to maximum 30 characters per line
+    Wraps text to maximum 30 characters per line and ensures it stays within margins
     """
     c.setFont(font_name, font_size)
     words = text.split()
     line = ""
     char_count = 0
+    max_chars = 25  # Reduced from 30 to ensure text stays within margins
     
     for word in words:
-        # Check if adding this word would exceed 30 characters
-        if char_count + len(word) + (1 if line else 0) > 30:
+        # Check if adding this word would exceed the character limit
+        test_line = f"{line} {word}".strip()
+        if len(test_line) > max_chars:
             # Current line is at limit, print it and start new line
-            c.drawString(x_pos, y_pos, line)
+            if line:  # Only print if there's text to print
+                c.drawString(x_pos, y_pos, line[:max_chars])
+                y_pos -= font_size + 4  # Increased line spacing
             line = word
             char_count = len(word)
-            y_pos -= font_size + 2
         else:
-            # Add word to current line
-            line = f"{line} {word}".strip()
+            line = test_line
             char_count = len(line)
     
     # Print remaining text
     if line:
-        c.drawString(x_pos, y_pos, line)
-        y_pos -= font_size + 2
+        if len(line) > max_chars:
+            c.drawString(x_pos, y_pos, line[:max_chars])
+        else:
+            c.drawString(x_pos, y_pos, line)
+        y_pos -= font_size + 4
     
-    return y_pos
+    return y_position
 
 def create_pdf(data, photo=None):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # Add black sidebar
+    # Add black sidebar with slightly reduced width
+    sidebar_width = width/3 - 10  # Reduced sidebar width
     c.setFillColorRGB(0.1, 0.1, 0.1)
-    c.rect(0, 0, width/3, height, fill=1)
+    c.rect(0, 0, sidebar_width, height, fill=1)
     
     # Calculate photo dimensions and position
-    photo_size = int(width/3 - 40)
+    photo_size = int(sidebar_width - 40)  # Adjusted photo size
     photo_x = 20
     photo_y = height - photo_size - 20
     
@@ -423,7 +429,7 @@ def create_pdf(data, photo=None):
     y_position -= 25
     
     # About text with wrapping
-    y_position = wrap_text(data['about'], width/3 - 40, c, 20, y_position, "Helvetica", 10)
+    y_position = wrap_text(data['about'], sidebar_width - 40, c, 20, y_position, "Helvetica", 10)
     
     # Contact section
     y_position -= 20
@@ -433,9 +439,9 @@ def create_pdf(data, photo=None):
     
     # Contact details with wrapping
     c.setFont("Helvetica", 10)
-    y_position = wrap_text(data['phone'], width/3 - 40, c, 20, y_position)
-    y_position = wrap_text(data['email'], width/3 - 40, c, 20, y_position)
-    y_position = wrap_text(data['address'], width/3 - 40, c, 20, y_position)
+    y_position = wrap_text(data['phone'], sidebar_width - 40, c, 20, y_position)
+    y_position = wrap_text(data['email'], sidebar_width - 40, c, 20, y_position)
+    y_position = wrap_text(data['address'], sidebar_width - 40, c, 20, y_position)
     
     # Expertise section
     y_position -= 20
@@ -446,7 +452,7 @@ def create_pdf(data, photo=None):
     # Draw skill bars
     c.setFont("Helvetica", 10)
     for name, level in zip(data['skill_names'], data['skill_levels']):
-        y_position = wrap_text(name, width/3 - 40, c, 20, y_position)
+        y_position = wrap_text(name, sidebar_width - 40, c, 20, y_position)
         # Draw skill bar background
         c.setFillColorRGB(0.3, 0.3, 0.3)
         c.rect(20, y_position - 10, 80, 5, fill=1)
@@ -457,9 +463,9 @@ def create_pdf(data, photo=None):
         y_position -= 25
 
     # Main content area (right side)
-    right_margin = width/3 + 40
+    right_margin = sidebar_width + 50  # Adjusted right margin
     y_position = height - 100
-    right_width = width - right_margin - 40  # Width for right side text
+    right_width = width - right_margin - 60  # Width for right side text
     
     # Name and title
     c.setFillColorRGB(0, 0, 0)
