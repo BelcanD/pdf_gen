@@ -2,21 +2,17 @@ from flask import Flask, render_template_string, request, send_file
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import Paragraph
 from io import BytesIO
-import os
 
 app = Flask(__name__)
 
-# HTML template with form
 template = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CV Generator</title>
+    <title>PDF Creator</title>
     <style>
         * {
             margin: 0;
@@ -39,25 +35,31 @@ template = """
             padding: 2rem;
             border-radius: 15px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
         }
 
         h1 {
             text-align: center;
             margin-bottom: 2rem;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #000;
+            font-size: 2.5rem;
         }
 
         .form-group {
             margin-bottom: 1.5rem;
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
         label {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: bold;
+            color: #333;
         }
 
         input, textarea {
@@ -66,34 +68,41 @@ template = """
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 1rem;
+            background: #f8f9fa;
         }
 
         .education-entry, .experience-entry {
+            background: #f8f9fa;
             border: 1px solid #ddd;
-            padding: 1rem;
+            padding: 1.5rem;
             margin-bottom: 1rem;
             border-radius: 8px;
         }
 
         button {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: #000;
             color: white;
             padding: 1rem 2rem;
             border: none;
-            border-radius: 25px;
+            border-radius: 8px;
             cursor: pointer;
             width: 100%;
             font-size: 1.1rem;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
         }
 
         button:hover {
+            background: #333;
             transform: translateY(-2px);
         }
 
         .add-btn {
             background: #28a745;
             margin-bottom: 1rem;
+        }
+
+        .add-btn:hover {
+            background: #218838;
         }
 
         @media (max-width: 480px) {
@@ -105,7 +114,7 @@ template = """
 </head>
 <body>
     <div class="container">
-        <h1>CV Generator</h1>
+        <h1>PDF Creator</h1>
         <form action="/generate" method="POST">
             <div class="form-group">
                 <label>Full Name</label>
@@ -129,7 +138,7 @@ template = """
                 <input type="text" name="address" placeholder="Address" required>
             </div>
             
-            <div id="education-container">
+            <div id="education-container" class="form-group">
                 <h3>Education</h3>
                 <button type="button" class="add-btn" onclick="addEducation()">Add Education</button>
                 <div class="education-entry">
@@ -139,8 +148,8 @@ template = """
                 </div>
             </div>
             
-            <div id="experience-container">
-                <h3>Work Experience</h3>
+            <div id="experience-container" class="form-group">
+                <h3>Experience</h3>
                 <button type="button" class="add-btn" onclick="addExperience()">Add Experience</button>
                 <div class="experience-entry">
                     <input type="text" name="exp_years[]" placeholder="Years (e.g., 2018-2020)" required>
@@ -150,7 +159,7 @@ template = """
             </div>
             
             <div class="form-group">
-                <h3>Expertise/Skills</h3>
+                <h3>Skills/Expertise</h3>
                 <textarea name="skills" rows="4" placeholder="Enter skills (one per line)" required></textarea>
             </div>
             
@@ -192,69 +201,107 @@ def create_pdf(data):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # Add profile section
-    c.setFillColorRGB(0.2, 0.2, 0.2)
-    c.rect(0, height-250, 200, height, fill=1)
+    # Add black sidebar
+    c.setFillColorRGB(0, 0, 0)  # Black color
+    c.rect(0, 0, width/3, height, fill=1)
     
-    # Add name and title
-    c.setFillColorRGB(1, 1, 1)
-    c.setFont("Helvetica-Bold", 24)
-    c.drawString(220, height-60, data['name'])
-    c.setFont("Helvetica", 16)
-    c.drawString(220, height-80, data['title'])
-
-    # Add about me
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(30, height-280, "About me")
-    c.setFont("Helvetica", 10)
-    c.drawString(30, height-300, data['about'])
-
-    # Add contact information
-    y_position = height-350
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(30, y_position, "Contact")
-    c.setFont("Helvetica", 10)
-    c.drawString(30, y_position-20, f"Phone: {data['phone']}")
-    c.drawString(30, y_position-40, f"Email: {data['email']}")
-    c.drawString(30, y_position-60, f"Address: {data['address']}")
-
-    # Add education
-    y_position = height-150
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(220, y_position, "Education")
+    # Add content to sidebar (white text)
+    c.setFillColorRGB(1, 1, 1)  # White color
+    y_position = height - 100
     
+    # Name in sidebar
+    c.setFont("Helvetica-Bold", 20)
+    c.drawString(20, y_position, data['name'])
     y_position -= 30
+    
+    # Title in sidebar
+    c.setFont("Helvetica", 14)
+    c.drawString(20, y_position, data['title'])
+    y_position -= 50
+    
+    # About me in sidebar
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(20, y_position, "About me")
+    y_position -= 20
+    c.setFont("Helvetica", 10)
+    # Split about text into multiple lines
+    words = data['about'].split()
+    line = ""
+    for word in words:
+        if len(line + word) < 25:
+            line += word + " "
+        else:
+            c.drawString(20, y_position, line)
+            y_position -= 15
+            line = word + " "
+    if line:
+        c.drawString(20, y_position, line)
+    
+    # Contact info in sidebar
+    y_position -= 40
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(20, y_position, "Contact")
+    y_position -= 20
+    c.setFont("Helvetica", 10)
+    c.drawString(20, y_position, f"Phone: {data['phone']}")
+    y_position -= 15
+    c.drawString(20, y_position, f"Email: {data['email']}")
+    y_position -= 15
+    c.drawString(20, y_position, f"Address: {data['address']}")
+    
+    # Skills in sidebar
+    y_position -= 40
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(20, y_position, "Skills")
+    y_position -= 20
+    c.setFont("Helvetica", 10)
+    for skill in data['skills'].split('\n'):
+        c.drawString(20, y_position, f"• {skill}")
+        y_position -= 15
+
+    # Main content area (right side)
+    right_margin = width/3 + 20
+    y_position = height - 100
+    
+    # Education section
+    c.setFillColorRGB(0, 0, 0)  # Black text for main content
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(right_margin, y_position, "Education")
+    y_position -= 30
+    
     for i in range(len(data['edu_years'])):
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(220, y_position, data['edu_years'][i])
+        c.drawString(right_margin, y_position, data['edu_years'][i])
         c.setFont("Helvetica", 10)
-        c.drawString(220, y_position-15, data['edu_school'][i])
-        c.drawString(220, y_position-30, data['edu_location'][i])
+        c.drawString(right_margin, y_position-15, data['edu_school'][i])
+        c.drawString(right_margin, y_position-30, data['edu_location'][i])
         y_position -= 50
 
-    # Add work experience
+    # Experience section
     y_position -= 20
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(220, y_position, "Work Experience")
-    
+    c.drawString(right_margin, y_position, "Experience")
     y_position -= 30
+    
     for i in range(len(data['exp_years'])):
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(220, y_position, data['exp_years'][i])
+        c.drawString(right_margin, y_position, data['exp_years'][i])
         c.setFont("Helvetica", 10)
-        c.drawString(220, y_position-15, data['exp_position'][i])
-        c.drawString(220, y_position-30, data['exp_description'][i])
-        y_position -= 60
-
-    # Add skills
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(30, height-450, "Expertise")
-    y_position = height-480
-    for skill in data['skills'].split('\n'):
-        c.setFont("Helvetica", 10)
-        c.drawString(30, y_position, f"• {skill}")
-        y_position -= 20
+        c.drawString(right_margin, y_position-15, data['exp_position'][i])
+        # Split description into multiple lines
+        words = data['exp_description'][i].split()
+        line = ""
+        desc_y = y_position-30
+        for word in words:
+            if len(line + word) < 50:
+                line += word + " "
+            else:
+                c.drawString(right_margin, desc_y, line)
+                desc_y -= 15
+                line = word + " "
+        if line:
+            c.drawString(right_margin, desc_y, line)
+        y_position = desc_y - 30
 
     c.save()
     buffer.seek(0)
@@ -285,7 +332,7 @@ def generate_pdf():
     pdf = create_pdf(data)
     return send_file(
         pdf,
-        download_name='resume.pdf',
+        download_name='document.pdf',
         as_attachment=True,
         mimetype='application/pdf'
     )
